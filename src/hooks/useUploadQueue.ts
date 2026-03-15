@@ -13,8 +13,9 @@ export function useUploadQueue(onUploaded: () => void) {
   const uploadingRef = useRef(false);
 
   const addFiles = useCallback((newFiles: FileList | File[]) => {
+    const mediaExts = /\.(jpe?g|png|gif|webp|heic|heif|bmp|tiff?|mp4|mov|avi|mkv|webm|3gp|m4v)$/i;
     const items = Array.from(newFiles)
-      .filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'))
+      .filter(f => f.type.startsWith('image/') || f.type.startsWith('video/') || mediaExts.test(f.name))
       .map(file => ({ file, progress: 0, status: 'pending' as const, retryCount: 0 }));
     if (items.length === 0) return;
     setFiles(prev => [...prev, ...items]);

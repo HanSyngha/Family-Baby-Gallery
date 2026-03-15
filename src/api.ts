@@ -1,4 +1,5 @@
 const BASE = '/api';
+const IS_PWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
 
 async function request<T>(url: string, options?: RequestInit & { skipAuthRedirect?: boolean }): Promise<T> {
   const { skipAuthRedirect, ...fetchOptions } = options || {};
@@ -6,6 +7,7 @@ async function request<T>(url: string, options?: RequestInit & { skipAuthRedirec
     credentials: 'include',
     ...fetchOptions,
     headers: {
+      'X-App-Mode': IS_PWA ? 'pwa' : 'browser',
       ...(!fetchOptions?.body || fetchOptions.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...fetchOptions?.headers,
     },
@@ -43,11 +45,15 @@ export interface MediaItem {
   height: number | null;
   duration: number | null;
   createdAt: string;
+  uploadedAt: string | null;
   uploaderName: string;
   uploaderImage: string | null;
   likeCount: number;
   commentCount: number;
+  viewCount: number;
+  shareCount: number;
   liked: boolean;
+  favorited: boolean;
   viewers: { userId: number; name: string; profileImage: string | null }[];
   downloaders: { userId: number; name: string; profileImage: string | null }[];
 }
@@ -76,12 +82,14 @@ export const api = {
   },
 
   getMediaDetail: (id: number) => request<MediaItem>(`/media/${id}`),
+  getMediaIds: () => request<{ items: { id: number; filename: string; type: string; createdAt: string }[] }>('/media/ids'),
 
   uploadFile: (file: File, onProgress?: (pct: number) => void) => {
     return new Promise<{ ok: boolean; filename?: string; duplicate?: boolean }>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `${BASE}/media/upload`);
       xhr.withCredentials = true;
+      xhr.setRequestHeader('X-App-Mode', IS_PWA ? 'pwa' : 'browser');
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable && onProgress) {
@@ -136,11 +144,19 @@ export const api = {
     recentResults: { filename: string; originalName: string; status: 'done' | 'error'; error?: string; elapsed: number }[];
   }>('/media/processing'),
 
+  updateMediaDate: (id: number, createdAt: string) =>
+    request<{ ok: boolean; createdAt: string }>(`/media/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ createdAt }),
+    }),
+
   deleteMedia: (id: number) => request<{ ok: boolean }>(`/media/${id}`, { method: 'DELETE' }),
 
   recordView: (id: number) => request<{ ok: boolean }>(`/media/${id}/view`, { method: 'POST' }),
 
   toggleLike: (id: number) => request<{ liked: boolean }>(`/media/${id}/like`, { method: 'POST' }),
+  toggleFavorite: (id: number) => request<{ favorited: boolean }>(`/media/${id}/favorite`, { method: 'POST' }),
+  recordShare: (id: number) => request<{ ok: boolean }>(`/media/${id}/share`, { method: 'POST' }),
 
   getComments: (id: number) => request<Comment[]>(`/media/${id}/comments`),
 
@@ -158,7 +174,8 @@ export const api = {
     request<{ ok: boolean }>(`/users/${id}/ban`, { method: 'POST', body: JSON.stringify({ banned }) }),
   deleteUser: (id: number) => request<{ ok: boolean }>(`/users/${id}`, { method: 'DELETE' }),
 
-  thumbUrl: (id: number) => `${BASE}/media/${id}/thumb`,
-  fileUrl: (id: number) => `${BASE}/media/${id}/file`,
+  thumbUrl: (id: number, v?: string) => `${BASE}/media/${id}/thumb${v ? `?v=${v}` : ''}`,
+  fileUrl: (id: number, v?: string) => `${BASE}/media/${id}/file${v ? `?v=${v}` : ''}`,
+  hlsUrl: (id: number) => `${BASE}/media/${id}/hls/playlist.m3u8`,
   downloadUrl: (id: number) => `${BASE}/media/${id}/download`,
 };

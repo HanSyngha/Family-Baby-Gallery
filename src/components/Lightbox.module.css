@@ -83,6 +83,40 @@
 
 .closeBtn:hover { background: rgba(0, 0, 0, 0.5); }
 
+.fullscreenBtn {
+  position: absolute;
+  top: max(env(safe-area-inset-top, 8px), 12px);
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 10;
+  transition: background 0.15s;
+}
+
+.fullscreenBtn:hover { background: rgba(0, 0, 0, 0.5); }
+
+.slideshowCounter {
+  position: absolute;
+  top: max(env(safe-area-inset-top, 8px), 12px);
+  right: 12px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+
 /* YARL 스타일 오버라이드 */
 .mediaSection :global(.yarl__root),
 .mediaSection :global(.yarl__lightbox--inline-custom) {
@@ -138,7 +172,60 @@
   font-size: 12px;
   color: var(--color-text-tertiary);
   margin-top: 1px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
+
+.dateEditBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--color-text-tertiary);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.uploaderRow:hover .dateEditBtn { opacity: 1; }
+.dateEditBtn:hover { background: var(--color-primary-bg); color: var(--color-primary); }
+
+.dateEdit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.dateInput {
+  font-size: 12px;
+  padding: 3px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  outline: none;
+}
+
+.dateInput:focus { border-color: var(--color-primary); }
+
+.dateSaveBtn,
+.dateCancelBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.dateSaveBtn { color: #16a34a; }
+.dateSaveBtn:hover { background: #f0fdf4; }
+.dateCancelBtn { color: var(--color-text-tertiary); }
+.dateCancelBtn:hover { background: var(--color-bg); }
 
 /* 액션 바 */
 .actionBar {
@@ -186,6 +273,18 @@
   color: var(--color-danger);
   border-color: rgba(220, 68, 70, 0.2);
   background: rgba(220, 68, 70, 0.04);
+}
+
+.favorited {
+  color: var(--color-primary) !important;
+  background: rgba(139, 105, 20, 0.06);
+  border-color: rgba(139, 105, 20, 0.15);
+}
+
+.slideshowActive {
+  color: #16a34a !important;
+  background: rgba(22, 163, 74, 0.06);
+  border-color: rgba(22, 163, 74, 0.15);
 }
 
 /* 확인/다운로드 사람 */

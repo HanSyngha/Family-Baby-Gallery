@@ -23,5 +23,5 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY 땅땅로고.png 땅땅로고.ico ./dist/public/
 
-EXPOSE 2230
+EXPOSE 2280
 CMD ["node", "dist/server/index.js"]

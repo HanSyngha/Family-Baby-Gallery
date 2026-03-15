@@ -90,7 +90,24 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_downloads_media ON downloads(mediaId);
   CREATE INDEX IF NOT EXISTS idx_likes_media ON likes(mediaId);
   CREATE INDEX IF NOT EXISTS idx_comments_media ON comments(mediaId);
+  CREATE TABLE IF NOT EXISTS favorites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mediaId INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+    userId INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    createdAt TEXT DEFAULT (datetime('now', '+9 hours')),
+    UNIQUE(mediaId, userId)
+  );
+
+  CREATE TABLE IF NOT EXISTS shares (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mediaId INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+    userId INTEGER NOT NULL REFERENCES users(id),
+    createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(userId);
+  CREATE INDEX IF NOT EXISTS idx_favorites_media ON favorites(mediaId);
+  CREATE INDEX IF NOT EXISTS idx_shares_media ON shares(mediaId);
 `);
 
 // 마이그레이션: 기존 DB에 hash 컬럼 추가
@@ -103,6 +120,32 @@ try { db.exec('CREATE INDEX IF NOT EXISTS idx_media_hash ON media(hash)'); } cat
 
 // 마이그레이션: users에 banned 컬럼 추가
 try { db.exec('ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0'); } catch {}
+
+// 마이그레이션: media에 uploadedAt 컬럼 추가 (실제 업로드 시각)
+try { db.exec('ALTER TABLE media ADD COLUMN uploadedAt TEXT'); } catch {}
+
+// 마이그레이션: media에 source 컬럼 추가 ('local' | 'family')
+try { db.exec("ALTER TABLE media ADD COLUMN source TEXT DEFAULT 'local'"); } catch {}
+
+// 마이그레이션: views 테이블 UNIQUE 제약 제거 (조회할 때마다 카운트)
+try {
+  const hasUnique = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='views'").get() as { sql: string } | undefined;
+  if (hasUnique && hasUnique.sql.includes('UNIQUE')) {
+    db.exec(`
+      CREATE TABLE views_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        mediaId INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+        userId INTEGER NOT NULL REFERENCES users(id),
+        createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
+      );
+      INSERT INTO views_new SELECT * FROM views;
+      DROP TABLE views;
+      ALTER TABLE views_new RENAME TO views;
+      CREATE INDEX IF NOT EXISTS idx_views_media ON views(mediaId);
+    `);
+    console.log('Migrated views table: removed UNIQUE constraint');
+  }
+} catch {}
 
 // 기존 파일들의 해시를 채워넣기 (quick hash: head+tail+size)
 import crypto from 'crypto';
@@ -137,4 +180,19 @@ if (unhashed.length > 0) {
   console.log(`Backfilled hash for ${unhashed.length} existing files`);
 }
 
+// 땅콩페밀리 DB 연결 (볼륨 마운트 시)
+const FAMILY_DATA_DIR = process.env.FAMILY_DATA_DIR || '';
+let familyDb: InstanceType<typeof Database> | null = null;
+
+if (FAMILY_DATA_DIR) {
+  const familyDbPath = path.join(FAMILY_DATA_DIR, 'peanut-family.db');
+  if (fs.existsSync(familyDbPath)) {
+    familyDb = new Database(familyDbPath);
+    familyDb.pragma('journal_mode = WAL');
+    familyDb.pragma('busy_timeout = 5000');
+    console.log('[DB] Connected to peanut-family.db (땅콩페밀리)');
+  }
+}
+
+export { familyDb };
 export default db;

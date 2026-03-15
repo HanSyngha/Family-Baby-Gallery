@@ -57,9 +57,10 @@ async function processNext() {
     const elapsedSec = (Date.now() - start) / 1000;
     console.log(`[Queue] Processed: ${item.originalName} in ${elapsedSec.toFixed(1)}s | ${result.width}x${result.height} | takenAt: ${result.takenAt || 'none'}`);
 
+    const nowKst = new Date(Date.now() + 9 * 3600000).toISOString().replace('T', ' ').slice(0, 19);
     db.prepare(`
-      INSERT INTO media (uploaderId, filename, originalName, mimeType, type, size, width, height, duration, hash, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO media (uploaderId, filename, originalName, mimeType, type, size, width, height, duration, hash, createdAt, uploadedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       item.uploaderId,
       item.filename,
@@ -71,7 +72,8 @@ async function processNext() {
       result.height ?? null,
       result.duration ?? null,
       item.hash,
-      result.takenAt ?? new Date(Date.now() + 9 * 3600000).toISOString().replace('T', ' ').slice(0, 19),
+      result.takenAt ?? nowKst,
+      nowKst,
     );
 
     console.log(`[Queue] DB inserted: ${item.originalName} | remaining: ${queue.length}`);
@@ -82,7 +84,7 @@ async function processNext() {
     const uploader = db.prepare('SELECT name FROM users WHERE id = ?').get(item.uploaderId) as any;
     const uploaderName = uploader?.name || '누군가';
     const typeLabel = item.type === 'image' ? '사진' : '영상';
-    sendPushToOthers(item.uploaderId, '땅콩땅콩땅콩콩땅', `${uploaderName}님이 ${typeLabel}을 올렸어요!`);
+    sendPushToOthers(item.uploaderId, `${uploaderName}님의 새로운 ${typeLabel}`, `${uploaderName}님이 올리신 새로운 땅콩땅콩 ${typeLabel}을 확인하세요! 🥜`);
   } catch (err) {
     const elapsed = (Date.now() - start) / 1000;
     const errMsg = err instanceof Error ? err.message : String(err);

@@ -18,6 +18,18 @@ await app.register(fastifyCors, { origin: true, credentials: true });
 await app.register(fastifyCookie);
 await app.register(fastifyMultipart, { limits: { fileSize: 10 * 1024 * 1024 * 1024 } }); // 10GB
 
+// 캐시 제어
+app.addHook('onSend', (request, reply, _payload, done) => {
+  if (request.url.startsWith('/api/')) {
+    reply.header('Cache-Control', 'no-store');
+    reply.header('Vary', 'Cookie');
+  }
+  if (request.url === '/sw.js') {
+    reply.header('Cache-Control', 'no-cache, no-store');
+  }
+  done();
+});
+
 // API 라우트 등록
 registerAuthRoutes(app);
 registerMediaRoutes(app);
@@ -49,6 +61,7 @@ import db from './db.js';
 function cleanupOrphanFiles() {
   const originalsDir = path.resolve('data/originals');
   const thumbsDir = path.resolve('data/thumbnails');
+  const hlsDir = path.resolve('data/hls');
   if (!fs.existsSync(originalsDir)) return;
 
   const dbFiles = new Set(
@@ -69,7 +82,20 @@ function cleanupOrphanFiles() {
       fs.unlinkSync(filePath);
       const thumbPath = path.join(thumbsDir, file + '.webp');
       if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
+      const hlsPath = path.join(hlsDir, file);
+      if (fs.existsSync(hlsPath)) fs.rmSync(hlsPath, { recursive: true });
       console.log('Cleaned orphan file:', file);
+    }
+  }
+
+  // HLS 디렉토리 중 원본도 없고 DB에도 없는 고아 정리
+  // (원본이 있으면 아직 처리 중일 수 있으므로 건너뜀)
+  if (fs.existsSync(hlsDir)) {
+    for (const dir of fs.readdirSync(hlsDir)) {
+      if (!dbFiles.has(dir) && !fs.existsSync(path.join(originalsDir, dir))) {
+        fs.rmSync(path.join(hlsDir, dir), { recursive: true });
+        console.log('Cleaned orphan HLS dir:', dir);
+      }
     }
   }
 }

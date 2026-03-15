@@ -117,5 +117,40 @@ export async function processVideo(filename: string): Promise<ProcessResult> {
     if (fs.existsSync(tmpFrame)) fs.unlinkSync(tmpFrame);
   }
 
+  // moov atom을 파일 앞으로 이동 (faststart) → 스트리밍 재생 시작 단축
+  const tmpFaststart = originalPath + '.faststart.mp4';
+  try {
+    await execFileAsync('ffmpeg', [
+      '-i', originalPath,
+      '-c', 'copy',
+      '-movflags', '+faststart',
+      '-y',
+      tmpFaststart,
+    ]);
+    fs.renameSync(tmpFaststart, originalPath);
+  } catch {
+    if (fs.existsSync(tmpFaststart)) fs.unlinkSync(tmpFaststart);
+  }
+
+  // HLS 세그먼트 생성 (2초 단위, 재인코딩 없음)
+  // cwd를 hlsDir로 설정 → m3u8에 상대경로(seg000.ts)가 기록됨
+  const hlsDir = path.join(DATA_DIR, 'hls', filename);
+  try {
+    fs.mkdirSync(hlsDir, { recursive: true });
+    await execFileAsync('ffmpeg', [
+      '-i', originalPath,
+      '-c', 'copy',
+      '-hls_time', '2',
+      '-hls_list_size', '0',
+      '-hls_segment_type', 'fmp4',
+      '-hls_segment_filename', 'seg%03d.m4s',
+      '-y',
+      'playlist.m3u8',
+    ], { cwd: hlsDir });
+  } catch {
+    // HLS 생성 실패해도 원본 재생은 가능하므로 무시
+    if (fs.existsSync(hlsDir)) fs.rmSync(hlsDir, { recursive: true });
+  }
+
   return { width, height, duration, takenAt };
 }

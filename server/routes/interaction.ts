@@ -7,7 +7,7 @@ export function registerInteractionRoutes(app: FastifyInstance) {
   app.post('/api/media/:id/view', { preHandler: authenticate }, async (request) => {
     const { id } = request.params as { id: string };
     const userId = (request as any).user.userId;
-    db.prepare('INSERT OR IGNORE INTO views (mediaId, userId) VALUES (?, ?)').run(parseInt(id), userId);
+    db.prepare('INSERT INTO views (mediaId, userId) VALUES (?, ?)').run(parseInt(id), userId);
     return { ok: true };
   });
 
@@ -24,6 +24,29 @@ export function registerInteractionRoutes(app: FastifyInstance) {
     }
     db.prepare('INSERT INTO likes (mediaId, userId) VALUES (?, ?)').run(mediaId, userId);
     return { liked: true };
+  });
+
+  // 즐겨찾기 토글
+  app.post('/api/media/:id/favorite', { preHandler: authenticate }, async (request) => {
+    const { id } = request.params as { id: string };
+    const userId = (request as any).user.userId;
+    const mediaId = parseInt(id);
+
+    const existing = db.prepare('SELECT id FROM favorites WHERE mediaId = ? AND userId = ?').get(mediaId, userId);
+    if (existing) {
+      db.prepare('DELETE FROM favorites WHERE mediaId = ? AND userId = ?').run(mediaId, userId);
+      return { favorited: false };
+    }
+    db.prepare('INSERT INTO favorites (mediaId, userId) VALUES (?, ?)').run(mediaId, userId);
+    return { favorited: true };
+  });
+
+  // 공유 기록
+  app.post('/api/media/:id/share', { preHandler: authenticate }, async (request) => {
+    const { id } = request.params as { id: string };
+    const userId = (request as any).user.userId;
+    db.prepare('INSERT INTO shares (mediaId, userId) VALUES (?, ?)').run(parseInt(id), userId);
+    return { ok: true };
   });
 
   // 댓글 목록
