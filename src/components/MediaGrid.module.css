@@ -35,6 +35,18 @@
   white-space: nowrap;
 }
 
+/* 설이 며칠차 태그 */
+.dayBadge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+  padding: 2.5px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(var(--grid-cols, 2), 1fr);

@@ -127,6 +127,10 @@ try { db.exec('ALTER TABLE media ADD COLUMN uploadedAt TEXT'); } catch {}
 // 마이그레이션: media에 source 컬럼 추가 ('local' | 'family')
 try { db.exec("ALTER TABLE media ADD COLUMN source TEXT DEFAULT 'local'"); } catch {}
 
+// 마이그레이션: comments에 parentId(대댓글), editedAt(수정 표시) 컬럼 추가
+try { db.exec('ALTER TABLE comments ADD COLUMN parentId INTEGER REFERENCES comments(id) ON DELETE CASCADE'); } catch {}
+try { db.exec('ALTER TABLE comments ADD COLUMN editedAt TEXT'); } catch {}
+
 // 마이그레이션: views 테이블 UNIQUE 제약 제거 (조회할 때마다 카운트)
 try {
   const hasUnique = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='views'").get() as { sql: string } | undefined;

@@ -300,14 +300,22 @@ export function registerMediaRoutes(app: FastifyInstance) {
     const media = db.prepare('SELECT filename, originalName, mimeType, size, source FROM media WHERE id = ?').get(parseInt(id)) as any;
     if (!media) return reply.code(404).send({ error: 'Not found' });
 
+    const filePath = path.join(resolveDataDir(media.source), 'originals', media.filename);
+    if (!fs.existsSync(filePath)) return reply.code(404).send({ error: 'File not found' });
+
     // 다운로드 기록
     db.prepare('INSERT OR IGNORE INTO downloads (mediaId, userId) VALUES (?, ?)').run(parseInt(id), userId);
 
-    const filePath = path.join(resolveDataDir(media.source), 'originals', media.filename);
+    // Content-Length는 DB 값이 아니라 실제 파일 크기를 사용한다.
+    // (예전 업로드는 후처리로 파일 크기가 DB값과 달라져, DB값을 쓰면 다운로드가 잘렸음)
+    const stat = fs.statSync(filePath);
+    // 한글 파일명은 RFC 5987(filename*)로 보내고, 구형 클라이언트용 ASCII 폴백을 함께 준다.
+    const safeName = media.originalName.replace(/[\r\n"]/g, '_');
+    const asciiName = safeName.replace(/[^\x20-\x7e]/g, '_');
     reply.headers({
       'Content-Type': media.mimeType,
-      'Content-Disposition': `attachment; filename="${encodeURIComponent(media.originalName)}"`,
-      'Content-Length': media.size,
+      'Content-Disposition': `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`,
+      'Content-Length': stat.size,
     });
     return reply.send(fs.createReadStream(filePath));
   });

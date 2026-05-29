@@ -1,7 +1,7 @@
 import { build } from 'esbuild';
 
 await build({
-  entryPoints: ['server/index.ts'],
+  entryPoints: ['server/index.ts', 'server/retranscode.ts'],
   bundle: true,
   platform: 'node',
   target: 'node20',

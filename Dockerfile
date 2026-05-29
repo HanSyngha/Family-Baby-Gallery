@@ -13,7 +13,7 @@ RUN npm run build:client && npm run build:server
 
 FROM node:20-alpine
 
-RUN apk add --no-cache ffmpeg
+RUN apk add --no-cache ffmpeg intel-media-driver
 
 WORKDIR /app
 

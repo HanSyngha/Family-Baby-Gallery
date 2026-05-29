@@ -65,6 +65,8 @@ export interface Comment {
   userId: number;
   name: string;
   profileImage: string | null;
+  parentId: number | null;
+  editedAt: string | null;
 }
 
 export const api = {
@@ -160,9 +162,15 @@ export const api = {
 
   getComments: (id: number) => request<Comment[]>(`/media/${id}/comments`),
 
-  addComment: (id: number, content: string) =>
+  addComment: (id: number, content: string, parentId?: number) =>
     request<Comment>(`/media/${id}/comments`, {
       method: 'POST',
+      body: JSON.stringify({ content, parentId }),
+    }),
+
+  editComment: (id: number, content: string) =>
+    request<Comment>(`/comments/${id}`, {
+      method: 'PATCH',
       body: JSON.stringify({ content }),
     }),
 

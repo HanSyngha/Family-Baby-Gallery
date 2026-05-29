@@ -550,6 +550,28 @@
   font-weight: 600;
 }
 
+.selectActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.playBtn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 18px;
+  background: var(--color-text);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.playBtn:active:not(:disabled) { transform: scale(0.95); }
+.playBtn:disabled { opacity: 0.45; }
+
 .shareBtn {
   display: flex;
   align-items: center;

@@ -235,6 +235,16 @@ export default function Gallery({ user, onLogout }: Props) {
     history.pushState({ modal: 'lightbox' }, '');
   }, []);
 
+  // 선택한 항목만 무한 반복 재생
+  const playSelected = useCallback(() => {
+    const sel = items.filter(i => selectedIds.has(i.id));
+    if (sel.length === 0) return;
+    setShuffledItems(sel as any);
+    setLightboxIndex(0);
+    history.pushState({ modal: 'lightbox' }, '');
+    exitSelectMode();
+  }, [items, selectedIds, exitSelectMode]);
+
   const openUpload = useCallback(() => {
     setShowUpload(true);
     history.pushState({ modal: 'upload' }, '');
@@ -448,6 +458,16 @@ export default function Gallery({ user, onLogout }: Props) {
       {selectMode && (
         <div className={styles.selectBar}>
           <span className={styles.selectCount}>{selectedIds.size}개 선택됨</span>
+          <div className={styles.selectActions}>
+          <button
+            className={styles.playBtn}
+            onClick={playSelected}
+            disabled={selectedIds.size === 0}
+            title="선택 항목 반복재생"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+            재생
+          </button>
           <button
             className={styles.shareBtn}
             onClick={handleShare}
@@ -462,6 +482,7 @@ export default function Gallery({ user, onLogout }: Props) {
               </svg>공유</>
             )}
           </button>
+          </div>
         </div>
       )}
 

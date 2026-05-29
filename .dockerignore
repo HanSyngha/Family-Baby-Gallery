@@ -1,0 +1,9 @@
+.git
+node_modules
+dist
+data
+.env
+.playwright-mcp
+*.bak
+build.log
+docker-compose.yml.bak.*

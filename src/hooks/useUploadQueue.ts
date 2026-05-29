@@ -11,6 +11,8 @@ export interface UploadFile {
 export function useUploadQueue(onUploaded: () => void) {
   const [files, setFiles] = useState<UploadFile[]>([]);
   const uploadingRef = useRef(false);
+  // 큐 전진 트리거. 파일 추가/직전 작업 완료 시 올린다.
+  const [nudge, setNudge] = useState(0);
 
   const addFiles = useCallback((newFiles: FileList | File[]) => {
     const mediaExts = /\.(jpe?g|png|gif|webp|heic|heif|bmp|tiff?|mp4|mov|avi|mkv|webm|3gp|m4v)$/i;
@@ -19,9 +21,13 @@ export function useUploadQueue(onUploaded: () => void) {
       .map(file => ({ file, progress: 0, status: 'pending' as const, retryCount: 0 }));
     if (items.length === 0) return;
     setFiles(prev => [...prev, ...items]);
+    setNudge(n => n + 1);
   }, []);
 
   // 순차 처리: 해시 계산 → 중복 체크 → 업로드
+  // nudge가 바뀔 때마다 큐를 한 칸 전진시킨다. uploadingRef를 해제한 "후"에
+  // nudge를 올리므로(아래 finally), ref가 살아있는 채로 effect가 재실행되어
+  // 다음 파일이 '대기'에서 멈추는 레이스가 생기지 않는다.
   useEffect(() => {
     if (uploadingRef.current) return;
     const pendingIdx = files.findIndex(f => f.status === 'pending');
@@ -68,9 +74,9 @@ export function useUploadQueue(onUploaded: () => void) {
       })
       .finally(() => {
         uploadingRef.current = false;
-        setFiles(prev => [...prev]);
+        setNudge(n => n + 1);
       });
-  }, [files.length, files.filter(f => f.status === 'done' || f.status === 'error' || f.status === 'duplicate').length]);
+  }, [nudge]);
 
   // beforeunload
   useEffect(() => {
@@ -87,6 +93,7 @@ export function useUploadQueue(onUploaded: () => void) {
         ? { ...f, status: 'pending' as const, progress: 0, retryCount: 0 }
         : f
     ));
+    setNudge(n => n + 1);
   }, []);
 
   const clearDone = useCallback(() => {

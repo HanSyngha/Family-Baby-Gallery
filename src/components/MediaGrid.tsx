@@ -25,6 +25,15 @@ function getDateKey(dateStr: string): string {
   return dateStr.slice(0, 10);
 }
 
+// 설이 생일(2026-02-19)을 1일차로 계산. 생일 이전이면 null.
+const SEOL_BIRTH = new Date('2026-02-19T00:00:00');
+function seolDay(dateKey: string): number | null {
+  const d = new Date(dateKey + 'T00:00:00');
+  if (isNaN(d.getTime())) return null;
+  const day = Math.floor((d.getTime() - SEOL_BIRTH.getTime()) / 86400000) + 1;
+  return day >= 1 ? day : null;
+}
+
 interface DateGroup {
   dateKey: string;
   label: string;
@@ -108,6 +117,9 @@ export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sor
             <div className={styles.dateHeader}>
               <span className={styles.dateLine} />
               <span className={styles.dateLabel}>{group.label}</span>
+              {seolDay(group.dateKey) !== null && (
+                <span className={styles.dayBadge}>설이 {seolDay(group.dateKey)}일</span>
+              )}
               <span className={styles.dateCount}>{group.items.length}장</span>
               <span className={styles.dateLine} />
             </div>
