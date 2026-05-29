@@ -58,6 +58,15 @@ export interface MediaItem {
   downloaders: { userId: number; name: string; profileImage: string | null }[];
 }
 
+export interface GalleryEvent {
+  id: number;
+  startDate: string;
+  endDate: string;
+  title: string;
+  color: string;
+}
+export type GalleryEventInput = { startDate: string; endDate: string; title: string; color: string };
+
 export interface Comment {
   id: number;
   content: string;
@@ -153,6 +162,13 @@ export const api = {
     }),
 
   deleteMedia: (id: number) => request<{ ok: boolean }>(`/media/${id}`, { method: 'DELETE' }),
+
+  // 갤러리 이벤트 자막
+  getGalleryEvents: () => request<GalleryEvent[]>('/gallery-events'),
+  createGalleryEvent: (e: GalleryEventInput) => request<GalleryEvent>('/gallery-events', { method: 'POST', body: JSON.stringify(e) }),
+  updateGalleryEvent: (id: number, e: GalleryEventInput) => request<GalleryEvent>(`/gallery-events/${id}`, { method: 'PATCH', body: JSON.stringify(e) }),
+  deleteGalleryEvent: (id: number) => request<{ ok: boolean }>(`/gallery-events/${id}`, { method: 'DELETE' }),
+  applyEventToFamily: (id: number) => request<{ ok: boolean }>(`/gallery-events/${id}/apply-to-family`, { method: 'POST' }),
 
   recordView: (id: number) => request<{ ok: boolean }>(`/media/${id}/view`, { method: 'POST' }),
 

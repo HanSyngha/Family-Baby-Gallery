@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../auth.js';
 import { enqueue, getQueueStatus } from '../upload-queue.js';
-import db from '../db.js';
+import db, { familyDb } from '../db.js';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
@@ -318,6 +318,73 @@ export function registerMediaRoutes(app: FastifyInstance) {
       'Content-Length': stat.size,
     });
     return reply.send(fs.createReadStream(filePath));
+  });
+
+  // ===== 갤러리 이벤트 자막 (날짜 범위 → 'N일차' 자동) =====
+  app.get('/api/gallery-events', { preHandler: authenticate }, async () => {
+    return db.prepare('SELECT id, startDate, endDate, title, color FROM gallery_events ORDER BY startDate DESC').all();
+  });
+
+  app.post('/api/gallery-events', { preHandler: authenticate }, async (request, reply) => {
+    const { userId, role } = (request as any).user;
+    if (role !== 'master') return reply.code(403).send({ error: '관리자만 가능합니다' });
+    let { startDate, endDate, title, color } = request.body as { startDate: string; endDate: string; title: string; color?: string };
+    if (!title?.trim()) return reply.code(400).send({ error: '제목을 입력하세요' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      return reply.code(400).send({ error: '날짜 형식 오류' });
+    }
+    if (endDate < startDate) [startDate, endDate] = [endDate, startDate];
+    const r = db.prepare('INSERT INTO gallery_events (startDate, endDate, title, color, createdBy) VALUES (?, ?, ?, ?, ?)')
+      .run(startDate, endDate, title.trim(), color || '#946b2d', userId);
+    return db.prepare('SELECT id, startDate, endDate, title, color FROM gallery_events WHERE id = ?').get(r.lastInsertRowid);
+  });
+
+  app.patch('/api/gallery-events/:id', { preHandler: authenticate }, async (request, reply) => {
+    if ((request as any).user.role !== 'master') return reply.code(403).send({ error: '관리자만 가능합니다' });
+    const { id } = request.params as { id: string };
+    let { startDate, endDate, title, color } = request.body as { startDate: string; endDate: string; title: string; color?: string };
+    if (!title?.trim()) return reply.code(400).send({ error: '제목을 입력하세요' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      return reply.code(400).send({ error: '날짜 형식 오류' });
+    }
+    if (endDate < startDate) [startDate, endDate] = [endDate, startDate];
+    const ev = db.prepare('SELECT id FROM gallery_events WHERE id = ?').get(parseInt(id));
+    if (!ev) return reply.code(404).send({ error: 'Not found' });
+    db.prepare('UPDATE gallery_events SET startDate = ?, endDate = ?, title = ?, color = ? WHERE id = ?')
+      .run(startDate, endDate, title.trim(), color || '#946b2d', parseInt(id));
+    return db.prepare('SELECT id, startDate, endDate, title, color FROM gallery_events WHERE id = ?').get(parseInt(id));
+  });
+
+  app.delete('/api/gallery-events/:id', { preHandler: authenticate }, async (request, reply) => {
+    if ((request as any).user.role !== 'master') return reply.code(403).send({ error: '관리자만 가능합니다' });
+    const { id } = request.params as { id: string };
+    db.prepare('DELETE FROM gallery_events WHERE id = ?').run(parseInt(id));
+    return { ok: true };
+  });
+
+  // 구 앱 → 신규 앱(family) 단방향 적용 (복사本, 신규 앱은 이후 독립 수정 가능)
+  app.post('/api/gallery-events/:id/apply-to-family', { preHandler: authenticate }, async (request, reply) => {
+    if ((request as any).user.role !== 'master') return reply.code(403).send({ error: '관리자만 가능합니다' });
+    if (!familyDb) return reply.code(400).send({ error: '신규 앱 연결 불가' });
+    const { id } = request.params as { id: string };
+    const ev = db.prepare('SELECT startDate, endDate, title, color FROM gallery_events WHERE id = ?').get(parseInt(id)) as any;
+    if (!ev) return reply.code(404).send({ error: 'Not found' });
+    // 신규 앱 DB에 테이블 보장 (배포 순서 무관하게)
+    familyDb.exec(`CREATE TABLE IF NOT EXISTS gallery_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, startDate TEXT NOT NULL, endDate TEXT NOT NULL,
+      title TEXT NOT NULL, color TEXT NOT NULL DEFAULT '#E8943A', createdBy INTEGER,
+      createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
+    )`);
+    // 같은 기간+제목이 이미 있으면 갱신, 없으면 삽입 (중복 방지)
+    const existing = familyDb.prepare('SELECT id FROM gallery_events WHERE startDate = ? AND endDate = ? AND title = ?')
+      .get(ev.startDate, ev.endDate, ev.title) as any;
+    if (existing) {
+      familyDb.prepare('UPDATE gallery_events SET color = ? WHERE id = ?').run(ev.color, existing.id);
+    } else {
+      familyDb.prepare('INSERT INTO gallery_events (startDate, endDate, title, color, createdBy) VALUES (?, ?, ?, ?, NULL)')
+        .run(ev.startDate, ev.endDate, ev.title, ev.color);
+    }
+    return { ok: true };
   });
 }
 

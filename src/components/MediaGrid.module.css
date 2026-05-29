@@ -35,6 +35,18 @@
   white-space: nowrap;
 }
 
+/* 날짜별 이벤트 자막 */
+.eventCaption {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  text-align: center;
+  margin: -2px 4px 10px;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
 /* 설이 며칠차 태그 */
 .dayBadge {
   font-size: 11px;

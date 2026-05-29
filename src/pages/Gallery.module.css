@@ -556,12 +556,11 @@
   gap: 8px;
 }
 
-.playBtn {
+.playBtn, .downloadBtn {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 8px 18px;
-  background: var(--color-text);
+  padding: 8px 15px;
   color: #fff;
   border-radius: 10px;
   font-size: 13px;
@@ -569,8 +568,11 @@
   transition: opacity 0.15s, transform 0.1s;
 }
 
-.playBtn:active:not(:disabled) { transform: scale(0.95); }
-.playBtn:disabled { opacity: 0.45; }
+.playBtn { background: var(--color-text); }
+.downloadBtn { background: #27AE60; }
+
+.playBtn:active:not(:disabled), .downloadBtn:active:not(:disabled) { transform: scale(0.95); }
+.playBtn:disabled, .downloadBtn:disabled { opacity: 0.45; }
 
 .shareBtn {
   display: flex;

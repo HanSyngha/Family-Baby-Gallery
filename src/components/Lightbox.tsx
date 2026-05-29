@@ -100,6 +100,19 @@ export default function Lightbox({ items, index, user, onClose, onNavigate, onDe
   const [editingDate, setEditingDate] = useState(false);
   const [dateValue, setDateValue] = useState('');
   const [slideshow, setSlideshow] = useState(!!initialSlideshow);
+  const [events, setEvents] = useState<{ startDate: string; endDate: string; title: string; color: string }[]>([]);
+
+  useEffect(() => { api.getGalleryEvents().then(setEvents).catch(() => {}); }, []);
+
+  const eventCaption = (() => {
+    const dk = item?.createdAt?.slice(0, 10);
+    if (!dk) return null;
+    const e = events.find(ev => dk >= ev.startDate && dk <= ev.endDate);
+    if (!e) return null;
+    if (e.startDate === e.endDate) return { text: e.title, color: e.color };
+    const day = Math.floor((new Date(dk + 'T00:00:00').getTime() - new Date(e.startDate + 'T00:00:00').getTime()) / 86400000) + 1;
+    return { text: `${e.title} ${day}일차`, color: e.color };
+  })();
 
   // 조회 기록
   useEffect(() => {
@@ -275,6 +288,12 @@ export default function Lightbox({ items, index, user, onClose, onNavigate, onDe
               )}
             </div>
           </div>
+
+          {eventCaption && (
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, letterSpacing: '-0.2px', color: eventCaption.color, padding: '2px 2px 8px', borderBottom: '1px solid var(--color-border-light)', marginBottom: 10 }}>
+              {eventCaption.text}
+            </div>
+          )}
 
           <div className={styles.actionBar}>
             <button className={`${styles.likeBtn} ${item.liked ? styles.liked : ''}`} onClick={handleLike}>

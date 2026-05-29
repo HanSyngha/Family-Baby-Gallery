@@ -245,6 +245,22 @@ export default function Gallery({ user, onLogout }: Props) {
     exitSelectMode();
   }, [items, selectedIds, exitSelectMode]);
 
+  // 선택한 항목 일괄 다운로드 (순차)
+  const downloadSelected = useCallback(() => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    ids.forEach((id, i) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = api.downloadUrl(id);
+        a.setAttribute('download', '');
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }, i * 500);
+    });
+  }, [selectedIds]);
+
   const openUpload = useCallback(() => {
     setShowUpload(true);
     history.pushState({ modal: 'upload' }, '');
@@ -450,6 +466,7 @@ export default function Gallery({ user, onLogout }: Props) {
             selectedIds={selectedIds}
             onLongPress={canShare ? enterSelectMode : undefined}
             onLikeToggle={handleLikeToggle}
+            isAdmin={user.role === 'master'}
           />
         )}
       </main>
@@ -467,6 +484,15 @@ export default function Gallery({ user, onLogout }: Props) {
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
             재생
+          </button>
+          <button
+            className={styles.downloadBtn}
+            onClick={downloadSelected}
+            disabled={selectedIds.size === 0}
+            title="선택 항목 다운로드"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+            저장
           </button>
           <button
             className={styles.shareBtn}

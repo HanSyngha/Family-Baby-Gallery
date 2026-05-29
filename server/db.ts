@@ -131,6 +131,20 @@ try { db.exec("ALTER TABLE media ADD COLUMN source TEXT DEFAULT 'local'"); } cat
 try { db.exec('ALTER TABLE comments ADD COLUMN parentId INTEGER REFERENCES comments(id) ON DELETE CASCADE'); } catch {}
 try { db.exec('ALTER TABLE comments ADD COLUMN editedAt TEXT'); } catch {}
 
+// 갤러리 이벤트 자막 (날짜 범위 → 'N일차' 자동). 앱별 독립 보관.
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS gallery_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    startDate TEXT NOT NULL,
+    endDate TEXT NOT NULL,
+    title TEXT NOT NULL,
+    color TEXT NOT NULL DEFAULT '#946b2d',
+    createdBy INTEGER,
+    createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_gallery_events_date ON gallery_events(startDate, endDate)');
+} catch {}
+
 // 마이그레이션: views 테이블 UNIQUE 제약 제거 (조회할 때마다 카운트)
 try {
   const hasUnique = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='views'").get() as { sql: string } | undefined;
