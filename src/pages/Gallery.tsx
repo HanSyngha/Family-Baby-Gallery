@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { api, type User, type MediaItem } from '../api';
+import { api, type User, type MediaItem, type GalleryEvent } from '../api';
 import { useUploadQueue } from '../hooks/useUploadQueue';
 import { useProcessingStatus } from '../hooks/useProcessingStatus';
 import { usePinchColumns } from '../hooks/usePinchColumns';
@@ -78,6 +78,18 @@ export default function Gallery({ user, onLogout }: Props) {
   const { pushState, togglePush } = usePushNotification(true);
   const gridRef = useRef<HTMLElement>(null);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [events, setEvents] = useState<GalleryEvent[]>([]);
+  useEffect(() => { api.getGalleryEvents().then(setEvents).catch(() => {}); }, []);
+  // 빠른 날짜 이동: 그리드의 가장 가까운 스크롤 부모
+  const getScrollEl = useCallback((): HTMLElement | null => {
+    let el = gridRef.current as HTMLElement | null;
+    while (el) {
+      const oy = getComputedStyle(el).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) return el;
+      el = el.parentElement;
+    }
+    return document.scrollingElement as HTMLElement | null;
+  }, []);
 
   useEffect(() => {
     // 이미 설치된 경우 표시 안 함
