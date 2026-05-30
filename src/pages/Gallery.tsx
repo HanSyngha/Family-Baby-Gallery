@@ -474,6 +474,17 @@ export default function Gallery({ user, onLogout }: Props) {
             isAdmin={user.role === 'master'}
           />
         )}
+
+        {/* 빠른 날짜 이동: 사이드 스크러버 + 캘린더 */}
+        {sort === 'recent' && items.length > 0 && (
+          <DateScrubber
+            items={items}
+            events={events}
+            babyBirth="2026-02-19"
+            getScrollEl={getScrollEl}
+            hasMore={!!nextCursor}
+          />
+        )}
       </main>
 
       {/* 선택 모드 하단 바 */}
