@@ -119,6 +119,10 @@ export function registerMediaRoutes(app: FastifyInstance) {
 
   // 업로드
   app.post('/api/media/upload', { preHandler: authenticate }, async (request, reply) => {
+    // 업로드 비활성: 콘텐츠는 땅콩페밀리에서만 업로드/큐레이션. env로 재활성 가능.
+    if (process.env.UPLOAD_ENABLED !== 'true') {
+      return reply.code(403).send({ error: '이 앱에서는 업로드가 비활성화되어 있습니다' });
+    }
     const data = await request.file();
     if (!data) return reply.code(400).send({ error: 'No file' });
 

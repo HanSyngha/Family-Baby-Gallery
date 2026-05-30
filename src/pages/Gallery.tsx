@@ -17,6 +17,9 @@ interface Props {
 
 type SortMode = 'recent' | 'likes' | 'views' | 'favorites';
 
+// 업로드는 기본 비활성 (땅콩페밀리에서만 업로드/큐레이션). 나중에 env로 재활성 가능.
+const UPLOAD_ENABLED = import.meta.env.VITE_UPLOAD_ENABLED === 'true';
+
 // 설이 생일 계산
 const BIRTH = new Date(2026, 1, 19);
 BIRTH.setHours(0, 0, 0, 0);
@@ -308,12 +311,14 @@ export default function Gallery({ user, onLogout }: Props) {
           {selectMode && (
             <button className={styles.selectCancelBtn} onClick={exitSelectMode}>취소</button>
           )}
-          <button className={styles.uploadBtn} onClick={() => openUpload()}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            올리기
-          </button>
+          {UPLOAD_ENABLED && (
+            <button className={styles.uploadBtn} onClick={() => openUpload()}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              올리기
+            </button>
+          )}
           <div className={styles.menuWrap}>
             <button className={styles.avatar} onClick={() => setShowMenu(!showMenu)}>
               {user.profileImage
@@ -452,7 +457,7 @@ export default function Gallery({ user, onLogout }: Props) {
         ) : items.length === 0 ? (
           <div className={styles.empty}>
             <p>{sort === 'favorites' ? '즐겨찾기한 사진이 없어요' : '아직 사진이 없어요'}</p>
-            {sort !== 'favorites' && <button onClick={() => openUpload()}>첫 사진 올리기</button>}
+            {UPLOAD_ENABLED && sort !== 'favorites' && <button onClick={() => openUpload()}>첫 사진 올리기</button>}
           </div>
         ) : (
           <MediaGrid
@@ -513,7 +518,7 @@ export default function Gallery({ user, onLogout }: Props) {
       )}
 
       {/* 모바일 FAB */}
-      {!selectMode && (
+      {UPLOAD_ENABLED && !selectMode && (
         <button className={styles.fab} onClick={() => openUpload()}>
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
             <path d="M12 5v14M5 12h14" />
