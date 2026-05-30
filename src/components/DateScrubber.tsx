@@ -8,14 +8,13 @@ interface Props {
   babyBirth?: string | null;        // 생일 → "N일" 폴백 라벨
   getScrollEl: () => HTMLElement | null; // 스크롤 컨테이너(AppShell .content)
   sectionPrefix?: string;           // 섹션 id 접두사 (기본 'month-')
+  hasMore?: boolean;                // 더 로드할 게 있으면 스크러버 항상 표시
 }
-
-interface DayGroup { dateKey: string; label: string; }
 
 function ymLabel(dateKey: string) { return dateKey.slice(2, 7).replace('-', '.'); } // 24.08
 function ymdLabel(dateKey: string) { return dateKey.slice(2).replace(/-/g, '.'); }  // 24.08.15
 
-export default function DateScrubber({ items, events, babyBirth, getScrollEl, sectionPrefix = 'month-' }: Props) {
+export default function DateScrubber({ items, events, babyBirth, getScrollEl, sectionPrefix = 'month-', hasMore }: Props) {
   const [dragging, setDragging] = useState(false);
   const [bubble, setBubble] = useState<{ y: number; text: string } | null>(null);
   const [showCal, setShowCal] = useState(false);
@@ -90,9 +89,22 @@ export default function DateScrubber({ items, events, babyBirth, getScrollEl, se
     setShowCal(false);
   }, [sectionPrefix]);
 
+  // 콘텐츠가 화면보다 길어 실제 스크롤이 생기는지 추적 (월이 1개여도 표시)
+  const [scrollable, setScrollable] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      const el = getScrollEl();
+      setScrollable(!!el && el.scrollHeight > el.clientHeight + 200);
+    };
+    check();
+    const t = setTimeout(check, 300);
+    return () => clearTimeout(t);
+  }, [items.length, getScrollEl]);
+
   useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
 
-  if (months.length < 2) return null; // 점프할 게 거의 없으면 숨김
+  // 월이 2개 이상이거나, 더 불러올 게 있거나, 스크롤이 실제로 생기면 표시
+  if (months.length < 2 && !hasMore && !scrollable) return null;
 
   return (
     <>
@@ -122,15 +134,15 @@ export default function DateScrubber({ items, events, babyBirth, getScrollEl, se
       </button>
 
       {showCal && (
-        <MonthCalendar months={months} labelFor={labelFor} onPick={jumpToMonth} onClose={() => setShowCal(false)} />
+        <MonthCalendar months={months} onPick={jumpToMonth} onClose={() => setShowCal(false)} />
       )}
     </>
   );
 }
 
 // 월 그리드 팝업 (연도별). 미디어 있는 월만 활성.
-function MonthCalendar({ months, labelFor, onPick, onClose }: {
-  months: string[]; labelFor: (dk: string) => string; onPick: (m: string) => void; onClose: () => void;
+function MonthCalendar({ months, onPick, onClose }: {
+  months: string[]; onPick: (m: string) => void; onClose: () => void;
 }) {
   const available = new Set(months);
   const years = useMemo(() => {
