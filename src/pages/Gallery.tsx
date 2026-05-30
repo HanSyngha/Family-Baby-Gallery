@@ -8,6 +8,7 @@ import MediaGrid from '../components/MediaGrid';
 import Lightbox from '../components/Lightbox';
 import UploadModal from '../components/UploadModal';
 import Admin from './Admin';
+import DateScrubber from '../components/DateScrubber';
 import styles from './Gallery.module.css';
 
 interface Props {
