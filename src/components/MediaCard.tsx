@@ -95,7 +95,7 @@ export default function MediaCard({ item, index = 0, onClick, selectMode, select
         )}
 
         {!selectMode && item.uploadedAt && Date.now() - new Date(item.uploadedAt.replace(' ', 'T')).getTime() < 12 * 3600000 && (
-          <span className={styles.newDot} aria-label="새 사진" />
+          <span className={styles.newBadge}>NEW!</span>
         )}
 
         {/* 즐겨찾기 아이콘 */}
