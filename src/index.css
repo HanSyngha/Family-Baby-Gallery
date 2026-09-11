@@ -55,8 +55,6 @@
 html {
   -webkit-tap-highlight-color: transparent;
   scroll-behavior: smooth;
-  /* 갤러리를 끝까지 당겼을 때 브라우저 새로고침으로 새는 것 방지 (스크롤 위치 유실) */
-  overscroll-behavior-y: contain;
 }
 
 body {
