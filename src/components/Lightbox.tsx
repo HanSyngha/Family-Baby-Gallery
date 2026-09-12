@@ -186,6 +186,36 @@ export default function Lightbox({ items, index, user, onClose, onNavigate, onDe
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
+  // ── 가족 앱 공유 범위 (master 전용) ────────────────────────────────
+  // 이 앱의 사진도 원본은 가족 앱 것이라, 여기서 바로 노출 범위를 켜고 끌 수 있게 한다.
+  const isMaster = user.role === 'master';
+  const [scope, setScope] = useState<{ linked: boolean; shared: boolean; externalShared: boolean } | null>(null);
+  const [scopeBusy, setScopeBusy] = useState<null | 'shared' | 'externalShared'>(null);
+
+  useEffect(() => {
+    if (!isMaster) return;
+    let alive = true;
+    setScope(null);
+    api.getFamilyScope(item.id)
+      .then(d => { if (alive) setScope(d); })
+      .catch(() => { if (alive) setScope(null); });
+    return () => { alive = false; };
+  }, [isMaster, item.id]);
+
+  const toggleScope = useCallback(async (key: 'shared' | 'externalShared') => {
+    if (!scope || scopeBusy) return;
+    const next = !scope[key];
+    setScopeBusy(key);
+    try {
+      const res = await api.setFamilyScope(item.id, { [key]: next });
+      setScope({ linked: true, shared: res.shared, externalShared: res.externalShared });
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '변경하지 못했어요');
+    } finally {
+      setScopeBusy(null);
+    }
+  }, [scope, scopeBusy, item.id]);
+
   const handleLike = useCallback(async () => {
     const result = await api.toggleLike(item.id);
     onLikeToggle(item.id, result.liked);
@@ -347,6 +377,26 @@ export default function Lightbox({ items, index, user, onClose, onNavigate, onDe
               </button>
             )}
           </div>
+
+          {isMaster && scope && (
+            <div className={styles.scopeBox}>
+              <div className={styles.scopeTitle}>공유 범위</div>
+              {!scope.linked ? (
+                <div className={styles.scopeEmpty}>가족 앱에 같은 사진이 없어요</div>
+              ) : (
+                <>
+                  <button className={styles.scopeRow} onClick={() => toggleScope('shared')} disabled={scopeBusy !== null}>
+                    <span>땅땅&콩콩 <em>우리 가족</em></span>
+                    <span className={`${styles.scopeSwitch} ${scope.shared ? styles.scopeOn : ''}`}><span /></span>
+                  </button>
+                  <button className={styles.scopeRow} onClick={() => toggleScope('externalShared')} disabled={scopeBusy !== null || !scope.shared}>
+                    <span>Peanut World <em>{scope.shared ? '승인받은 지인까지' : '땅땅&콩콩을 먼저 켜세요'}</em></span>
+                    <span className={`${styles.scopeSwitch} ${scope.externalShared ? styles.scopeOn : ''}`}><span /></span>
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           <div className={styles.peopleSection}>
             {item.viewers.length > 0 && (

@@ -233,6 +233,13 @@ export const api = {
   deleteComment: (id: number) =>
     request<{ ok: boolean }>(`/comments/${id}`, { method: 'DELETE' }),
 
+  // 가족 앱 공유 범위 (master 전용). 이 앱의 사진도 원본은 가족 앱에 있어서,
+  // 여기서 바로 땅땅&콩콩·Peanut World 노출을 켜고 끌 수 있다.
+  getFamilyScope: (id: number) =>
+    request<{ linked: boolean; familyMediaId?: number; shared: boolean; externalShared: boolean }>(`/media/${id}/family-scope`),
+  setFamilyScope: (id: number, patch: { shared?: boolean; externalShared?: boolean }) =>
+    request<{ ok: boolean; shared: boolean; externalShared: boolean }>(`/media/${id}/family-scope`, { method: 'POST', body: JSON.stringify(patch) }),
+
   getUsers: () => request<User[]>('/users'),
   banUser: (id: number, banned: boolean) =>
     request<{ ok: boolean }>(`/users/${id}/ban`, { method: 'POST', body: JSON.stringify({ banned }) }),

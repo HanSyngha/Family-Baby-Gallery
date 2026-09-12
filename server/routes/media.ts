@@ -411,6 +411,74 @@ export function registerMediaRoutes(app: FastifyInstance) {
   });
 
   // ===== 갤러리 이벤트 자막 (날짜 범위 → 'N일차' 자동) =====
+  // ===== 가족 앱 공유 범위 조회/변경 (master 전용) =====
+  //
+  // 여기(친척앱)에 있는 사진도 원본은 가족 앱 소유다. 관리자가 사진을 보다가
+  // "이건 땅땅&콩콩에서 내리자" 또는 "이건 외부까지 열자" 싶을 때 가족 앱으로
+  // 건너가지 않아도 되게, 해시로 원본을 찾아 플래그만 바꾼다.
+  // 파일과 이 앱의 media 행은 건드리지 않는다.
+
+  /** 이 앱의 media.id → 가족 앱 media 행 (해시 매칭). 없으면 null. */
+  function findFamilyMedia(mediaId: number): any | null {
+    if (!familyDb) return null;
+    const row = db.prepare('SELECT hash FROM media WHERE id = ?').get(mediaId) as { hash: string | null } | undefined;
+    if (!row?.hash) return null;
+    try {
+      return familyDb.prepare(
+        "SELECT id, visibility, externalShared FROM media WHERE hash = ? ORDER BY CASE visibility WHEN 'shared' THEN 0 ELSE 1 END, id LIMIT 1"
+      ).get(row.hash) || null;
+    } catch (err) {
+      console.error('[scope] 가족 앱 조회 실패:', err);
+      return null;
+    }
+  }
+
+  app.get('/api/media/:id/family-scope', { preHandler: authenticate }, async (request, reply) => {
+    const { role } = (request as any).user;
+    if (role !== 'master') return reply.code(403).send({ error: 'Forbidden' });
+    const fam = findFamilyMedia(parseInt((request.params as { id: string }).id));
+    if (!fam) return { linked: false, shared: false, externalShared: false };
+    return { linked: true, familyMediaId: fam.id, shared: fam.visibility === 'shared', externalShared: !!fam.externalShared };
+  });
+
+  app.post('/api/media/:id/family-scope', { preHandler: authenticate }, async (request, reply) => {
+    const { role } = (request as any).user;
+    if (role !== 'master') return reply.code(403).send({ error: 'Forbidden' });
+    if (!familyDb) return reply.code(400).send({ error: '가족 앱 연결 불가' });
+
+    const fam = findFamilyMedia(parseInt((request.params as { id: string }).id));
+    if (!fam) return reply.code(404).send({ error: '가족 앱에서 원본을 찾지 못했어요' });
+
+    const { shared, externalShared } = request.body as { shared?: boolean; externalShared?: boolean };
+
+    try {
+      if (typeof shared === 'boolean') {
+        if (shared) {
+          familyDb.prepare("UPDATE media SET visibility = 'shared', ownerId = NULL WHERE id = ?").run(fam.id);
+        } else {
+          // 공유를 내리면 더 넓은 범위도 함께 내려간다(가족 앱 unshare와 같은 불변식).
+          familyDb.prepare("UPDATE media SET visibility = 'private', ownerId = uploaderId, externalShared = 0, externalSharedAt = NULL WHERE id = ?").run(fam.id);
+          familyDb.prepare('DELETE FROM album_items WHERE mediaId = ?').run(fam.id);
+        }
+      }
+      if (typeof externalShared === 'boolean') {
+        if (externalShared) {
+          // 공유 상태일 때만 외부 공개 가능 — 가족 앱과 같은 규칙
+          familyDb.prepare(
+            "UPDATE media SET externalShared = 1, externalSharedAt = datetime('now', '+9 hours') WHERE id = ? AND visibility = 'shared'"
+          ).run(fam.id);
+        } else {
+          familyDb.prepare('UPDATE media SET externalShared = 0, externalSharedAt = NULL WHERE id = ?').run(fam.id);
+        }
+      }
+      const after = familyDb.prepare('SELECT visibility, externalShared FROM media WHERE id = ?').get(fam.id) as any;
+      return { ok: true, shared: after.visibility === 'shared', externalShared: !!after.externalShared };
+    } catch (err) {
+      request.log.error(err, 'family-scope 변경 실패');
+      return reply.code(500).send({ error: '변경하지 못했어요' });
+    }
+  });
+
   app.get('/api/gallery-events', { preHandler: authenticate }, async () => {
     return db.prepare('SELECT id, startDate, endDate, title, color FROM gallery_events ORDER BY startDate DESC').all();
   });
