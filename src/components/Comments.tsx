@@ -7,6 +7,16 @@ interface Props {
   user: User;
 }
 
+/**
+ * 키보드가 올라오면 입력창을 화면 안으로 끌어온다.
+ * viewport의 interactive-widget=resizes-content로 레이아웃 뷰포트가 줄어든 *뒤*에
+ * 스크롤해야 실제 보이는 자리로 간다 — 키보드 애니메이션이 대략 250ms라 조금 기다린다.
+ */
+function revealOnFocus(e: { currentTarget: HTMLElement }) {
+  const el = e.currentTarget;
+  setTimeout(() => el.scrollIntoView({ block: 'nearest' }), 300);
+}
+
 export default function Comments({ mediaId, user }: Props) {
   const [comments, setComments] = useState<CommentType[]>([]);
   const [text, setText] = useState('');
@@ -120,6 +130,7 @@ export default function Comments({ mediaId, user }: Props) {
                     value={replyText}
                     autoFocus
                     placeholder={`${top.name}님에게 답글...`}
+                    onFocus={revealOnFocus}
                     onChange={e => setReplyText(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitReply(top.id); } }}
                   />
@@ -137,6 +148,7 @@ export default function Comments({ mediaId, user }: Props) {
           onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
           placeholder="댓글 입력..."
+          onFocus={revealOnFocus}
         />
         <button className={styles.sendBtn} onClick={submit} disabled={!text.trim()}>전송</button>
       </div>
