@@ -136,7 +136,19 @@
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
-  overflow: hidden;
+  /* 패널 전체가 하나의 스크롤 영역이다.
+     예전엔 여기가 hidden이고 그 안의 .commentsWrap → Comments .list 순으로 스크롤이 이중으로
+     겹쳐 있었다. 갤럭시 S(360×740)에선 사이드 패널 약 400px에서 업로더 행·액션 바·
+     공유 범위 박스(관리자)·확인한 사람 목록이 고정으로 ~290px를 먹어 댓글 목록에 60px 남짓만
+     남았고, 그 좁은 안쪽 스크롤은 잡기도 어렵고 WebView에선 바깥에 먹혔다.
+     이제 위 요소들도 같이 밀려 올라가고 댓글 입력창만 바닥에 붙는다(Comments .inputWrap).
+     min-height:0 — 세로 레이아웃에서 flex:1인 이 패널이 내용만큼 늘어나는 대신 남은 높이에
+     맞춰 줄어들어야 스크롤이 생긴다(flex 기본 min-height:auto가 이를 막는다). */
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 업로더 */
@@ -307,10 +319,11 @@
 
 /* 댓글 */
 .commentsWrap {
-  flex: 1;
-  /* 네이티브 앱(edge-to-edge): 하단 시스템 네비바 높이만큼 여백 — 댓글 입력창이 안 가려지게 */
-  padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
-  overflow-y: auto;
+  /* 스크롤은 .sidePanel이 담당한다. 여기가 또 스크롤이면 이중 스크롤로 돌아간다.
+     하단 safe-area 여백은 바닥에 붙는 입력창(Comments .inputWrap)이 대신 챙긴다. */
+  flex: none;
+  padding: 12px 18px 0;
+  overflow: visible;
   border-top: 1px solid var(--color-border-light);
 }
 
@@ -343,7 +356,7 @@
   .actionBar { padding: 0 16px 10px; }
   .likeBtn, .actionBtn { padding: 6px 12px; font-size: 12px; }
   .peopleSection { padding: 8px 16px; }
-  .commentsWrap { padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  .commentsWrap { padding: 10px 16px 0; }
 }
 
 /* 극단적 세로 (긴 폰) */

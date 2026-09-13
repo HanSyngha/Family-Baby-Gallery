@@ -1,7 +1,8 @@
 .comments {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* height:100%를 두지 않는다 — 부모(.commentsWrap)에 맞춰 잘리면 목록이 안쪽 스크롤로 갇힌다.
+     내용만큼 늘어나고, 스크롤은 라이트박스 사이드 패널이 한다. */
 }
 
 .label {
@@ -14,8 +15,9 @@
 }
 
 .list {
-  flex: 1;
-  overflow-y: auto;
+  /* 스크롤은 라이트박스 사이드 패널이 한다. 여기서 또 잘라내면 댓글이 몇 줄짜리 창에 갇힌다. */
+  flex: none;
+  overflow: visible;
   margin-bottom: 10px;
 }
 
@@ -92,10 +94,17 @@
 }
 
 .inputWrap {
+  /* 패널을 어디까지 올려 보고 있든 입력창은 바닥에 붙어 있어야 한다.
+     가장 가까운 스크롤 조상(라이트박스 사이드 패널)의 아래 가장자리에 sticky.
+     네이티브 edge-to-edge에서 시스템 네비바에 가리지 않게 safe-area 여백을 여기서 챙긴다. */
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   gap: 6px;
-  padding-top: 8px;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--color-border-light);
+  background: var(--color-surface);
 }
 
 .input {
