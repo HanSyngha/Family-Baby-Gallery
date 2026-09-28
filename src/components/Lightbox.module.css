@@ -327,8 +327,10 @@
   border-top: 1px solid var(--color-border-light);
 }
 
-/* ─── 세로 화면 (폰, 세로 태블릿) ─── */
-@media (max-aspect-ratio: 3/4) {
+/* ─── 세로 화면 (폰, 세로 태블릿) ───
+   max-width: 키보드가 올라오면 뷰포트 높이가 줄어 비율만으로는 가로 배치로 뒤집힌다(사진이 왼쪽 쪽띠로 쪼그라듦).
+   폰 폭이면 키보드와 상관없이 세로 배치를 유지한다. */
+@media (max-aspect-ratio: 3/4), (max-width: 600px) {
   .content {
     flex-direction: column;
   }
