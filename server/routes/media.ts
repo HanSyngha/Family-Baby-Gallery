@@ -30,7 +30,7 @@ function makeVideoCursor(row: any): string {
 export function registerMediaRoutes(app: FastifyInstance) {
   // 미디어 목록 (커서 기반 페이지네이션, sort 지원)
   app.get('/api/media', { preHandler: authenticate }, async (request) => {
-    const { cursor, limit = '20', sort = 'recent' } = request.query as { cursor?: string; limit?: string; sort?: string };
+    const { cursor, after, limit = '20', sort = 'recent' } = request.query as { cursor?: string; after?: string; limit?: string; sort?: string };
     const lim = Math.min(parseInt(limit), 50);
     const { userId, role } = (request as any).user;
 
@@ -58,6 +58,10 @@ export function registerMediaRoutes(app: FastifyInstance) {
       rows = db.prepare(baseQuery + ' ORDER BY (SELECT COUNT(*) FROM views WHERE mediaId = m.id) DESC, m.id DESC').all(userId, userId);
     } else if (sort === 'favorites') {
       rows = db.prepare(baseQuery + ' WHERE EXISTS(SELECT 1 FROM favorites WHERE mediaId = m.id AND userId = ?) ORDER BY m.createdAt DESC').all(userId, userId, userId);
+    } else if (after) {
+      // 날짜 점프 후 위로 스크롤: 'createdAt|id'보다 최근 것을 가까운 순(오름차순)으로 읽어 최신순으로 뒤집는다.
+      const c = parseVideoCursor(after)!;
+      rows = (db.prepare(baseQuery + ' WHERE (m.createdAt > ? OR (m.createdAt = ? AND m.id > ?)) ORDER BY m.createdAt ASC, m.id ASC LIMIT ?').all(userId, userId, c.createdAt, c.createdAt, c.id ?? 0, lim) as any[]).reverse();
     } else if (cursor) {
       // 커서는 'createdAt|id' 복합키. id 없는 옛 커서(날짜 점프 등)는 createdAt만으로 비교.
       const c = parseVideoCursor(cursor)!;
@@ -77,6 +81,10 @@ export function registerMediaRoutes(app: FastifyInstance) {
     });
 
     const noPagination = sort === 'likes' || sort === 'views' || sort === 'favorites';
+    if (!noPagination && after) {
+      // 위 방향 응답: prevCursor = 이번 묶음의 가장 최근 것(더 최근이 남았을 때만)
+      return { items, nextCursor: null, prevCursor: rows.length === lim ? makeVideoCursor(rows[0]) : null };
+    }
     const nextCursor = noPagination ? null : (rows.length === lim ? makeVideoCursor(rows[rows.length - 1]) : null);
     return { items, nextCursor };
   });

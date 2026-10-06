@@ -9,6 +9,8 @@ interface Props {
   onItemClick: (index: number) => void;
   onLoadMore: () => void;
   hasMore: boolean;
+  onLoadNewer?: () => void; // 날짜 점프 후 맨 위 근처에서 더 최근 것 불러오기
+  hasNewer?: boolean;
   sort?: string;
   columns?: number;
   selectMode?: boolean;
@@ -41,8 +43,9 @@ interface DateGroup {
   items: { item: MediaItem; globalIndex: number }[];
 }
 
-export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sort, columns, selectMode, selectedIds, onLongPress, isAdmin }: Props) {
+export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, onLoadNewer, hasNewer, sort, columns, selectMode, selectedIds, onLongPress, isAdmin }: Props) {
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const topSentinelRef = useRef<HTMLDivElement>(null);
 
   // 갤러리 이벤트 자막
   const [events, setEvents] = useState<GalleryEvent[]>([]);
@@ -104,6 +107,23 @@ export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sor
     return () => obs.disconnect();
   }, [hasMore, items.length]);
 
+  const loadNewerRef = useRef(onLoadNewer);
+  loadNewerRef.current = onLoadNewer;
+
+  // 위쪽 센티넬: 실제로 스크롤되는 부모를 root로 잡아야 rootMargin이 먹어 맨 위에 닿기 전에 미리 불러온다.
+  // overflow:auto여도 높이 제한이 없으면(문서 전체가 스크롤) 센티넬이 늘 '보임'이라 끝없이 불러오므로 건너뛴다 → 없으면 뷰포트.
+  useEffect(() => {
+    const target = topSentinelRef.current;
+    if (!hasNewer || !target) return;
+    let root = target.parentElement;
+    while (root && !(/(auto|scroll)/.test(getComputedStyle(root).overflowY) && root.scrollHeight > root.clientHeight)) root = root.parentElement;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) loadNewerRef.current?.();
+    }, { root, rootMargin: '800px 0px 0px 0px' });
+    obs.observe(target);
+    return () => obs.disconnect();
+  }, [hasNewer, items.length]);
+
   const gridStyle = columns ? { '--grid-cols': columns } as React.CSSProperties : undefined;
 
   // srcset이 올바른 해상도를 고르려면 셀이 화면에서 차지하는 실제 너비를 알려줘야 한다.
@@ -137,6 +157,7 @@ export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sor
   // 최신순: 날짜별 그룹
   return (
     <div className={styles.container}>
+      {hasNewer && <div ref={topSentinelRef} className={styles.sentinel} />}
       {groups.map((group) => {
         const monthId = monthFirstKeys.get(group.dateKey);
         return (

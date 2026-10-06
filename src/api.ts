@@ -111,6 +111,9 @@ export const api = {
       `/media${qs ? `?${qs}` : ''}`,
     );
   },
+  // 날짜 점프 후 위로: after('createdAt|id')보다 최근 것 (최신순으로 옴)
+  getMediaNewer: (after: string) =>
+    request<{ items: MediaItem[]; prevCursor: string | null }>(`/media?${new URLSearchParams({ after, sort: 'recent' })}`),
   getVideoFeed: (cursor?: string | null) => {
     const params = new URLSearchParams();
     if (cursor) params.set('cursor', cursor);
