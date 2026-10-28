@@ -21,6 +21,7 @@ interface RecentResult {
 }
 
 const queue: QueueItem[] = [];
+const pendingHashes = new Set<string>();
 let processing = false;
 let current: { filename: string; originalName: string; startedAt: number } | null = null;
 const recentResults: RecentResult[] = [];
@@ -34,10 +35,18 @@ export function getQueueStatus() {
   };
 }
 
-export function enqueue(item: QueueItem) {
+export function hasPendingHash(hash: string): boolean {
+  return pendingHashes.has(hash);
+}
+
+export function enqueue(item: QueueItem): boolean {
+  // DB 등록은 영상 처리 후에 이뤄진다. 그동안 대기/처리 중인 해시도 중복으로 본다.
+  if (pendingHashes.has(item.hash)) return false;
+  pendingHashes.add(item.hash);
   queue.push(item);
   console.log(`[Queue] Added: ${item.originalName} (${(item.size / 1024 / 1024).toFixed(1)}MB) | queue size: ${queue.length}`);
   processNext();
+  return true;
 }
 
 async function processNext() {
@@ -91,6 +100,9 @@ async function processNext() {
     recentResults.push({ filename: item.filename, originalName: item.originalName, status: 'error', error: errMsg, elapsed });
     if (recentResults.length > MAX_RECENT) recentResults.shift();
     console.error(`[Queue] FAILED: ${item.originalName}`, err);
+  } finally {
+    // 실패한 업로드는 사용자가 다시 시도할 수 있어야 한다.
+    pendingHashes.delete(item.hash);
   }
 
   current = null;

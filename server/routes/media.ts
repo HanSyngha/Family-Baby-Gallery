@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../auth.js';
-import { enqueue, getQueueStatus } from '../upload-queue.js';
+import { enqueue, getQueueStatus, hasPendingHash } from '../upload-queue.js';
 import db, { familyDb } from '../db.js';
 import path from 'path';
 import fs from 'fs';
@@ -179,7 +179,7 @@ export function registerMediaRoutes(app: FastifyInstance) {
     const { hash } = request.body as { hash: string };
     if (!hash) return { duplicate: false };
     const existing = db.prepare('SELECT id FROM media WHERE hash = ?').get(hash) as any;
-    return { duplicate: !!existing, existingId: existing?.id ?? null };
+    return { duplicate: !!existing || hasPendingHash(hash), existingId: existing?.id ?? null };
   });
 
   // 처리 큐 상태
@@ -224,7 +224,11 @@ export function registerMediaRoutes(app: FastifyInstance) {
     }
 
     const uploaderId = (request as any).user.userId;
-    enqueue({ filename, originalName: data.filename, mimeType, type, size: stat.size, uploaderId, hash: fileHash });
+    if (!enqueue({ filename, originalName: data.filename, mimeType, type, size: stat.size, uploaderId, hash: fileHash })) {
+      fs.unlinkSync(filePath);
+      app.log.info({ originalName: data.filename }, 'Pending duplicate skipped');
+      return { ok: true, duplicate: true, existingId: null };
+    }
     app.log.info({ originalName: data.filename, uploaderId, filename }, 'Enqueued for processing');
 
     return { ok: true, filename };
